@@ -20,11 +20,15 @@ class LayerDependencyTest {
         .optionalLayer("Service").definedBy("..service..")
         .optionalLayer("Repository").definedBy("..repository..")
         .optionalLayer("Entity").definedBy("..entity..")
+        .optionalLayer("DTO").definedBy("..dto..")
+        .optionalLayer("Domain").definedBy("..domain..")
         .optionalLayer("Config").definedBy("..config..")
         .optionalLayer("Exception").definedBy("..exception..")
 
         .whereLayer("Controller").mayNotBeAccessedByAnyLayer()
         .whereLayer("Service").mayOnlyBeAccessedByLayers("Controller", "Service")
         .whereLayer("Repository").mayOnlyBeAccessedByLayers("Service")
-        .whereLayer("Entity").mayOnlyBeAccessedByLayers("Service", "Repository", "Config");
+        .whereLayer("Entity").mayOnlyBeAccessedByLayers("Service", "Repository", "Config", "DTO", "Domain")
+        .whereLayer("DTO").mayOnlyBeAccessedByLayers("Controller", "Service")
+        .whereLayer("Domain").mayOnlyBeAccessedByLayers("Service", "DTO", "Entity");
 }
