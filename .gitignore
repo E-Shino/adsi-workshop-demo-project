@@ -1,0 +1,39 @@
+### IDE ###
+.idea
+*.iws
+*.iml
+*.ipr
+.vscode/
+.project
+.classpath
+.settings
+
+### OS ###
+.DS_Store
+Thumbs.db
+
+### Gradle (root) ###
+.gradle/
+backend/
+
+### Backend (Java / Gradle) ###
+packages/backend/build/
+packages/backend/.gradle/
+packages/backend/out/
+packages/backend/bin/
+packages/backend/gradle.properties
+
+### Frontend (Next.js) ###
+packages/frontend/node_modules/
+packages/frontend/.next/
+packages/frontend/out/
+
+### Infra (CDK) ###
+packages/infra/node_modules/
+packages/infra/cdk.out/
+packages/infra/*.js
+packages/infra/*.d.ts
+
+### Local config ###
+.env
+.env.local
