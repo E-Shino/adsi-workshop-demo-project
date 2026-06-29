@@ -3,6 +3,7 @@
   "private": true,
   "scripts": {
     "boot": "cd packages/backend && ./gradlew bootRun",
+    "boot:workshop": "cd packages/backend && ./gradlew bootRun --args='--spring.profiles.active=workshop'",
     "dev": "cd packages/frontend && npm run dev",
     "build:backend": "cd packages/backend && ./gradlew bootJar",
     "build:frontend": "cd packages/frontend && npm run build",

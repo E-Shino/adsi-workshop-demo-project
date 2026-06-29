@@ -37,7 +37,7 @@ dependencies {
 	implementation("org.flywaydb:flyway-core")
 	implementation("org.flywaydb:flyway-database-postgresql")
 	runtimeOnly("org.postgresql:postgresql")
-	testRuntimeOnly("com.h2database:h2")
+	runtimeOnly("com.h2database:h2")
 
 	// UUID
 	implementation("com.github.f4b6a3:uuid-creator:6.0.0")

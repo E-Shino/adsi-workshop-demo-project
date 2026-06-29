@@ -9,8 +9,8 @@ CREATE TABLE employees (
     hire_date DATE NOT NULL,
     retire_date DATE,
     version BIGINT NOT NULL DEFAULT 0,
-    created_at TIMESTAMPTZ NOT NULL,
-    updated_at TIMESTAMPTZ NOT NULL
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL
 );
 
 CREATE INDEX idx_employees_department_id ON employees(department_id);
