@@ -5,6 +5,7 @@ import com.example.attendance.attendance.domain.WorkDuration;
 import com.example.attendance.attendance.dto.AttendanceHistoryResponse;
 import com.example.attendance.attendance.dto.AttendanceRecordResponse;
 import com.example.attendance.attendance.dto.DailyAttendanceResponse;
+import com.example.attendance.attendance.dto.MemoUpdateRequest;
 import com.example.attendance.attendance.dto.MonthlySummaryResponse;
 import com.example.attendance.attendance.dto.TeamMemberSummaryResponse;
 import com.example.attendance.attendance.dto.TodayStatusResponse;
@@ -50,7 +51,7 @@ public class AttendanceServiceImpl implements AttendanceService {
 
     @Override
     @Transactional
-    public AttendanceRecordResponse clockIn(UUID employeeId) {
+    public AttendanceRecordResponse clockIn(UUID employeeId, String memo) {
         var employee = findEmployeeOrThrow(employeeId);
         var today = LocalDate.now(clock);
 
@@ -65,6 +66,7 @@ public class AttendanceServiceImpl implements AttendanceService {
                 .employee(employee)
                 .workDate(today)
                 .clockIn(now)
+                .clockInMemo(memo)
                 .corrected(false)
                 .build();
 
@@ -75,14 +77,38 @@ public class AttendanceServiceImpl implements AttendanceService {
 
     @Override
     @Transactional
-    public AttendanceRecordResponse clockOut(UUID employeeId) {
+    public AttendanceRecordResponse clockOut(UUID employeeId, String memo) {
         var today = LocalDate.now(clock);
         var record = attendanceRepository.findByEmployeeIdAndWorkDateAndClockOutIsNull(employeeId, today)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT, "No active clock-in found"));
 
         record.setClockOut(Instant.now(clock));
+        record.setClockOutMemo(memo);
         var saved = attendanceRepository.save(record);
         log.info("Clock-out recorded for employee={} at={}", employeeId, saved.getClockOut());
+        return AttendanceRecordResponse.from(saved);
+    }
+
+    @Override
+    @Transactional
+    public AttendanceRecordResponse updateMemo(UUID recordId, UUID employeeId, MemoUpdateRequest request) {
+        var record = attendanceRepository.findById(recordId)
+                .orElseThrow(() -> new EntityNotFoundException(
+                        "Attendance record with id '%s' was not found".formatted(recordId)));
+
+        if (!record.getEmployee().getId().equals(employeeId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Cannot edit another employee's memo");
+        }
+
+        if (request.clockInMemo() != null) {
+            record.setClockInMemo(request.clockInMemo());
+        }
+        if (request.clockOutMemo() != null) {
+            record.setClockOutMemo(request.clockOutMemo());
+        }
+
+        var saved = attendanceRepository.save(record);
+        log.info("Memo updated for record={} by employee={}", recordId, employeeId);
         return AttendanceRecordResponse.from(saved);
     }
 

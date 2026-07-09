@@ -28,6 +28,8 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.UUID;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -73,9 +75,12 @@ class AttendanceControllerTest {
                 LocalDate.of(2025, 1, 15),
                 Instant.parse("2025-01-15T00:00:00Z"),
                 null,
-                false
+                false,
+                null,
+                null,
+                0L
         );
-        when(attendanceService.clockIn(EMPLOYEE_ID)).thenReturn(response);
+        when(attendanceService.clockIn(eq(EMPLOYEE_ID), any())).thenReturn(response);
 
         // Act & Assert
         mockMvc.perform(post("/api/attendance/clock-in")
@@ -94,9 +99,12 @@ class AttendanceControllerTest {
                 LocalDate.of(2025, 1, 15),
                 Instant.parse("2025-01-14T23:00:00Z"),
                 Instant.parse("2025-01-15T08:00:00Z"),
-                false
+                false,
+                null,
+                null,
+                0L
         );
-        when(attendanceService.clockOut(EMPLOYEE_ID)).thenReturn(response);
+        when(attendanceService.clockOut(eq(EMPLOYEE_ID), any())).thenReturn(response);
 
         // Act & Assert
         mockMvc.perform(post("/api/attendance/clock-out")

@@ -25,6 +25,7 @@ import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
 import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.csrf;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -286,6 +287,88 @@ class AttendanceIntegrationTest {
                 .with(csrf())
                 .param("employeeId", employeeId.toString()))
             .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @DisplayName("出勤打刻にメモを付けられる")
+    void clockIn_withMemo_returnsMemo() throws Exception {
+        mockMvc.perform(post("/api/attendance/clock-in")
+                .session(employeeSession)
+                .with(csrf())
+                .contentType(APPLICATION_JSON)
+                .content("{\"memo\": \"朝会あり\"}")
+                .param("employeeId", employeeId.toString()))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.clockInMemo").value("朝会あり"))
+            .andExpect(jsonPath("$.clockOutMemo").isEmpty());
+    }
+
+    @Test
+    @DisplayName("退勤打刻にメモを付けられる")
+    void clockOut_withMemo_returnsMemo() throws Exception {
+        mockMvc.perform(post("/api/attendance/clock-in")
+                .session(employeeSession)
+                .with(csrf())
+                .param("employeeId", employeeId.toString()))
+            .andExpect(status().isCreated());
+
+        mockMvc.perform(post("/api/attendance/clock-out")
+                .session(employeeSession)
+                .with(csrf())
+                .contentType(APPLICATION_JSON)
+                .content("{\"memo\": \"定時退勤\"}")
+                .param("employeeId", employeeId.toString()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.clockOutMemo").value("定時退勤"));
+    }
+
+    @Test
+    @DisplayName("打刻後にメモを編集できる")
+    void updateMemo_ownRecord_succeeds() throws Exception {
+        var result = mockMvc.perform(post("/api/attendance/clock-in")
+                .session(employeeSession)
+                .with(csrf())
+                .contentType(APPLICATION_JSON)
+                .content("{\"memo\": \"元のメモ\"}")
+                .param("employeeId", employeeId.toString()))
+            .andExpect(status().isCreated())
+            .andReturn();
+
+        var body = result.getResponse().getContentAsString();
+        var id = com.jayway.jsonpath.JsonPath.read(body, "$.id").toString();
+        var version = ((Number) com.jayway.jsonpath.JsonPath.read(body, "$.version")).longValue();
+
+        mockMvc.perform(patch("/api/attendance/{id}/memo", id)
+                .session(employeeSession)
+                .with(csrf())
+                .contentType(APPLICATION_JSON)
+                .content("{\"clockInMemo\": \"修正後メモ\", \"version\": %d}".formatted(version))
+                .param("employeeId", employeeId.toString()))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.clockInMemo").value("修正後メモ"));
+    }
+
+    @Test
+    @DisplayName("他人のレコードのメモは編集できない")
+    void updateMemo_otherRecord_returns403() throws Exception {
+        var result = mockMvc.perform(post("/api/attendance/clock-in")
+                .session(employeeSession)
+                .with(csrf())
+                .param("employeeId", employeeId.toString()))
+            .andExpect(status().isCreated())
+            .andReturn();
+
+        var body = result.getResponse().getContentAsString();
+        var id = com.jayway.jsonpath.JsonPath.read(body, "$.id").toString();
+        var version = ((Number) com.jayway.jsonpath.JsonPath.read(body, "$.version")).longValue();
+
+        mockMvc.perform(patch("/api/attendance/{id}/memo", id)
+                .session(managerSession)
+                .with(csrf())
+                .contentType(APPLICATION_JSON)
+                .content("{\"clockInMemo\": \"不正編集\", \"version\": %d}".formatted(version))
+                .param("employeeId", managerId.toString()))
+            .andExpect(status().isForbidden());
     }
 
     private MockHttpSession login(String email, String password) throws Exception {

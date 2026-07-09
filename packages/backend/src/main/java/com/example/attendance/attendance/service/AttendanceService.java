@@ -2,6 +2,7 @@ package com.example.attendance.attendance.service;
 
 import com.example.attendance.attendance.dto.AttendanceHistoryResponse;
 import com.example.attendance.attendance.dto.AttendanceRecordResponse;
+import com.example.attendance.attendance.dto.MemoUpdateRequest;
 import com.example.attendance.attendance.dto.TeamMemberSummaryResponse;
 import com.example.attendance.attendance.dto.TodayStatusResponse;
 
@@ -10,9 +11,11 @@ import java.util.UUID;
 
 public interface AttendanceService {
 
-    AttendanceRecordResponse clockIn(UUID employeeId);
+    AttendanceRecordResponse clockIn(UUID employeeId, String memo);
 
-    AttendanceRecordResponse clockOut(UUID employeeId);
+    AttendanceRecordResponse clockOut(UUID employeeId, String memo);
+
+    AttendanceRecordResponse updateMemo(UUID recordId, UUID employeeId, MemoUpdateRequest request);
 
     TodayStatusResponse getTodayStatus(UUID employeeId);
 
