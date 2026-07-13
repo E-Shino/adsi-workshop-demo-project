@@ -1,14 +1,18 @@
 package com.example.attendance.attendance.service;
 
 import com.example.attendance.attendance.domain.AttendanceStatus;
+import com.example.attendance.attendance.domain.MemoType;
 import com.example.attendance.attendance.domain.WorkDuration;
 import com.example.attendance.attendance.dto.AttendanceHistoryResponse;
 import com.example.attendance.attendance.dto.AttendanceRecordResponse;
 import com.example.attendance.attendance.dto.DailyAttendanceResponse;
+import com.example.attendance.attendance.dto.MemoRequest;
 import com.example.attendance.attendance.dto.MonthlySummaryResponse;
 import com.example.attendance.attendance.dto.TeamMemberSummaryResponse;
 import com.example.attendance.attendance.dto.TodayStatusResponse;
+import com.example.attendance.attendance.entity.AttendanceMemo;
 import com.example.attendance.attendance.entity.AttendanceRecord;
+import com.example.attendance.attendance.repository.AttendanceMemoRepository;
 import com.example.attendance.attendance.repository.AttendanceRecordRepository;
 import com.example.attendance.employee.entity.Employee;
 import com.example.attendance.employee.repository.EmployeeRepository;
@@ -36,14 +40,17 @@ import java.util.stream.Collectors;
 public class AttendanceServiceImpl implements AttendanceService {
 
     private final AttendanceRecordRepository attendanceRepository;
+    private final AttendanceMemoRepository memoRepository;
     private final EmployeeRepository employeeRepository;
     private final Clock clock;
 
     public AttendanceServiceImpl(
             AttendanceRecordRepository attendanceRepository,
+            AttendanceMemoRepository memoRepository,
             EmployeeRepository employeeRepository,
             Clock clock) {
         this.attendanceRepository = attendanceRepository;
+        this.memoRepository = memoRepository;
         this.employeeRepository = employeeRepository;
         this.clock = clock;
     }
@@ -51,6 +58,12 @@ public class AttendanceServiceImpl implements AttendanceService {
     @Override
     @Transactional
     public AttendanceRecordResponse clockIn(UUID employeeId) {
+        return clockIn(employeeId, null);
+    }
+
+    @Override
+    @Transactional
+    public AttendanceRecordResponse clockIn(UUID employeeId, MemoRequest memoRequest) {
         var employee = findEmployeeOrThrow(employeeId);
         var today = LocalDate.now(clock);
 
@@ -70,12 +83,24 @@ public class AttendanceServiceImpl implements AttendanceService {
 
         var saved = attendanceRepository.save(record);
         log.info("Clock-in recorded for employee={} at={}", employeeId, now);
+
+        if (memoRequest != null) {
+            var memo = buildMemo(saved, MemoType.CLOCK_IN, memoRequest);
+            memoRepository.save(memo);
+            return AttendanceRecordResponse.from(saved, List.of(memo));
+        }
         return AttendanceRecordResponse.from(saved);
     }
 
     @Override
     @Transactional
     public AttendanceRecordResponse clockOut(UUID employeeId) {
+        return clockOut(employeeId, null);
+    }
+
+    @Override
+    @Transactional
+    public AttendanceRecordResponse clockOut(UUID employeeId, MemoRequest memoRequest) {
         var today = LocalDate.now(clock);
         var record = attendanceRepository.findByEmployeeIdAndWorkDateAndClockOutIsNull(employeeId, today)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT, "No active clock-in found"));
@@ -83,6 +108,13 @@ public class AttendanceServiceImpl implements AttendanceService {
         record.setClockOut(Instant.now(clock));
         var saved = attendanceRepository.save(record);
         log.info("Clock-out recorded for employee={} at={}", employeeId, saved.getClockOut());
+
+        if (memoRequest != null) {
+            var memo = buildMemo(saved, MemoType.CLOCK_OUT, memoRequest);
+            memoRepository.save(memo);
+            var allMemos = memoRepository.findByAttendanceRecordId(saved.getId());
+            return AttendanceRecordResponse.from(saved, allMemos);
+        }
         return AttendanceRecordResponse.from(saved);
     }
 
@@ -230,5 +262,15 @@ public class AttendanceServiceImpl implements AttendanceService {
         return employeeRepository.findById(employeeId)
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Employee with id '%s' was not found".formatted(employeeId)));
+    }
+
+    private AttendanceMemo buildMemo(AttendanceRecord record, MemoType memoType, MemoRequest request) {
+        return AttendanceMemo.builder()
+                .id(UuidCreator.getTimeOrderedEpoch())
+                .attendanceRecord(record)
+                .memoType(memoType)
+                .category(request.category())
+                .note(request.note())
+                .build();
     }
 }

@@ -2,12 +2,22 @@ package com.example.attendance.attendance.controller;
 
 import com.example.attendance.attendance.dto.AttendanceHistoryResponse;
 import com.example.attendance.attendance.dto.AttendanceRecordResponse;
+import com.example.attendance.attendance.dto.ClockInRequest;
+import com.example.attendance.attendance.dto.ClockOutRequest;
+import com.example.attendance.attendance.dto.MemoRequest;
+import com.example.attendance.attendance.dto.MemoResponse;
 import com.example.attendance.attendance.dto.TeamMemberSummaryResponse;
 import com.example.attendance.attendance.dto.TodayStatusResponse;
 import com.example.attendance.attendance.service.AttendanceService;
+import com.example.attendance.attendance.service.MemoService;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -21,20 +31,28 @@ import java.util.UUID;
 public class AttendanceController {
 
     private final AttendanceService attendanceService;
+    private final MemoService memoService;
 
-    public AttendanceController(AttendanceService attendanceService) {
+    public AttendanceController(AttendanceService attendanceService, MemoService memoService) {
         this.attendanceService = attendanceService;
+        this.memoService = memoService;
     }
 
     @PostMapping("/clock-in")
     @ResponseStatus(HttpStatus.CREATED)
-    public AttendanceRecordResponse clockIn(@RequestParam UUID employeeId) {
-        return attendanceService.clockIn(employeeId);
+    public AttendanceRecordResponse clockIn(
+            @RequestParam UUID employeeId,
+            @RequestBody(required = false) ClockInRequest request) {
+        var memoRequest = request != null ? request.memo() : null;
+        return attendanceService.clockIn(employeeId, memoRequest);
     }
 
     @PostMapping("/clock-out")
-    public AttendanceRecordResponse clockOut(@RequestParam UUID employeeId) {
-        return attendanceService.clockOut(employeeId);
+    public AttendanceRecordResponse clockOut(
+            @RequestParam UUID employeeId,
+            @RequestBody(required = false) ClockOutRequest request) {
+        var memoRequest = request != null ? request.memo() : null;
+        return attendanceService.clockOut(employeeId, memoRequest);
     }
 
     @GetMapping("/today")
@@ -61,5 +79,23 @@ public class AttendanceController {
             @RequestParam String month,
             @RequestParam(required = false) UUID departmentId) {
         return attendanceService.getAllAttendance(month, departmentId);
+    }
+
+    @PutMapping("/{recordId}/memo/{memoType}")
+    public MemoResponse updateMemo(
+            @PathVariable UUID recordId,
+            @PathVariable String memoType,
+            @RequestBody @Valid MemoRequest request,
+            @RequestParam UUID employeeId) {
+        return memoService.updateMemo(recordId, memoType, request, employeeId);
+    }
+
+    @DeleteMapping("/{recordId}/memo/{memoType}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    public void deleteMemo(
+            @PathVariable UUID recordId,
+            @PathVariable String memoType,
+            @RequestParam UUID employeeId) {
+        memoService.deleteMemo(recordId, memoType, employeeId);
     }
 }

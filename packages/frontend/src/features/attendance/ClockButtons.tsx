@@ -3,6 +3,8 @@
 import { LogIn, LogOut } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Skeleton } from "@/components/ui/skeleton";
+import type { MemoRequest } from "./attendance-api";
+import { ClockMemoDialog } from "./ClockMemoDialog";
 import { formatTime } from "./format";
 import { useClockIn, useClockOut, useTodayStatus } from "./useAttendance";
 
@@ -58,6 +60,7 @@ export function ClockButtons() {
   const { data: todayStatus, isLoading } = useTodayStatus();
   const clockInMutation = useClockIn();
   const clockOutMutation = useClockOut();
+  const [dialogType, setDialogType] = useState<"CLOCK_IN" | "CLOCK_OUT" | null>(null);
 
   if (isLoading) {
     return (
@@ -79,6 +82,23 @@ export function ClockButtons() {
 
   const lastRecord = todayStatus?.records[todayStatus.records.length - 1];
 
+  function handleClockInClick() {
+    setDialogType("CLOCK_IN");
+  }
+
+  function handleClockOutClick() {
+    setDialogType("CLOCK_OUT");
+  }
+
+  function handleDialogConfirm(memo?: MemoRequest) {
+    if (dialogType === "CLOCK_IN") {
+      clockInMutation.mutate(memo);
+    } else if (dialogType === "CLOCK_OUT") {
+      clockOutMutation.mutate(memo);
+    }
+    setDialogType(null);
+  }
+
   return (
     <div className="rounded-lg border p-6 space-y-4">
       <CurrentTime />
@@ -94,7 +114,7 @@ export function ClockButtons() {
         <button
           type="button"
           disabled={!canClockIn || isPending}
-          onClick={() => clockInMutation.mutate()}
+          onClick={handleClockInClick}
           className="flex flex-col items-center justify-center gap-2 rounded-xl bg-pink-500 py-8 text-white transition-colors hover:bg-pink-600 active:bg-pink-700 disabled:bg-gray-200 disabled:text-gray-400"
         >
           <LogIn className="h-8 w-8" />
@@ -103,13 +123,30 @@ export function ClockButtons() {
         <button
           type="button"
           disabled={!canClockOut || isPending}
-          onClick={() => clockOutMutation.mutate()}
+          onClick={handleClockOutClick}
           className="flex flex-col items-center justify-center gap-2 rounded-xl bg-orange-500 py-8 text-white transition-colors hover:bg-orange-600 active:bg-orange-700 disabled:bg-gray-200 disabled:text-gray-400"
         >
           <LogOut className="h-8 w-8" />
           <span className="text-lg font-bold">退勤</span>
         </button>
       </div>
+
+      {lastRecord?.clockInMemo && (
+        <div className="text-sm text-muted-foreground text-center">
+          <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5">
+            [{lastRecord.clockInMemo.categoryLabel}]
+            {lastRecord.clockInMemo.note && ` ${lastRecord.clockInMemo.note}`}
+          </span>
+        </div>
+      )}
+
+      <ClockMemoDialog
+        open={dialogType !== null}
+        onClose={() => setDialogType(null)}
+        onConfirm={handleDialogConfirm}
+        type={dialogType ?? "CLOCK_IN"}
+        isPending={isPending}
+      />
     </div>
   );
 }
