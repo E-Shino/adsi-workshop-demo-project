@@ -97,6 +97,25 @@ class AttendanceServiceTest {
             assertThat(captor.getValue().getEmployee().getId()).isEqualTo(employee.getId());
         }
 
+        @Test
+        @DisplayName("既に出勤済みの場合は409エラーで連続出勤を防止する")
+        void clockIn_alreadyClockedIn_throwsConflict() {
+            // Arrange
+            when(employeeRepository.findById(employee.getId())).thenReturn(Optional.of(employee));
+            var existingRecord = AttendanceRecord.builder()
+                    .id(UUID.randomUUID())
+                    .employee(employee)
+                    .workDate(TODAY_TOKYO)
+                    .clockIn(FIXED_INSTANT)
+                    .build();
+            when(attendanceRepository.findByEmployeeIdAndWorkDateAndClockOutIsNull(employee.getId(), TODAY_TOKYO))
+                    .thenReturn(Optional.of(existingRecord));
+
+            // Act & Assert
+            assertThatThrownBy(() -> service.clockIn(employee.getId()))
+                    .isInstanceOf(ResponseStatusException.class);
+        }
+
     }
 
     @Nested

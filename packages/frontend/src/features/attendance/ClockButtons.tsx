@@ -38,6 +38,16 @@ function CurrentTime() {
   );
 }
 
+type AttendanceStatusType = "NOT_CLOCKED_IN" | "CLOCKED_IN" | "CLOCKED_OUT";
+
+export function canPerformClockIn(status: AttendanceStatusType): boolean {
+  return status === "NOT_CLOCKED_IN";
+}
+
+export function canPerformClockOut(status: AttendanceStatusType): boolean {
+  return status === "CLOCKED_IN";
+}
+
 const STATUS_LABELS = {
   NOT_CLOCKED_IN: "未出勤",
   CLOCKED_IN: "勤務中",
@@ -63,8 +73,8 @@ export function ClockButtons() {
   }
 
   const status = todayStatus?.status ?? "NOT_CLOCKED_IN";
-  const canClockIn = status === "NOT_CLOCKED_IN" || status !== "CLOCKED_OUT";
-  const canClockOut = status === "CLOCKED_IN";
+  const canClockIn = canPerformClockIn(status);
+  const canClockOut = canPerformClockOut(status);
   const isPending = clockInMutation.isPending || clockOutMutation.isPending;
 
   const lastRecord = todayStatus?.records[todayStatus.records.length - 1];
