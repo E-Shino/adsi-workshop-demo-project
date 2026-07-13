@@ -98,6 +98,8 @@ public class SecurityConfig {
             .requestMatchers(HttpMethod.POST, "/api/corrections").authenticated()
             .requestMatchers(HttpMethod.GET, "/api/corrections").authenticated()
 
+            .requestMatchers(HttpMethod.PUT, "/api/attendance/*/memo/*").authenticated()
+            .requestMatchers(HttpMethod.DELETE, "/api/attendance/*/memo/*").authenticated()
             .requestMatchers("/api/attendance/team/**").authenticated()
             .requestMatchers("/api/corrections/pending/**").authenticated()
             .requestMatchers("/api/corrections/*/approve").authenticated()

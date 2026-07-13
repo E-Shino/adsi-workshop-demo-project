@@ -1,11 +1,35 @@
 import { apiClient } from "@/lib/api-client";
 
+export type MemoCategory =
+  | "DIRECT_GO"
+  | "TRAIN_DELAY"
+  | "REMOTE"
+  | "INCIDENT"
+  | "OTHER"
+  | "DIRECT_RETURN"
+  | "EARLY_LEAVE"
+  | "OUT_OF_OFFICE";
+
+export interface MemoResponse {
+  id: string;
+  category: MemoCategory;
+  categoryLabel: string;
+  note: string | null;
+}
+
+export interface MemoRequest {
+  category: MemoCategory;
+  note: string;
+}
+
 export interface AttendanceRecordResponse {
   id: string;
   workDate: string;
   clockIn: string;
   clockOut: string | null;
   corrected: boolean;
+  clockInMemo: MemoResponse | null;
+  clockOutMemo: MemoResponse | null;
 }
 
 export interface TodayStatusResponse {
@@ -44,15 +68,47 @@ export interface TeamMemberSummaryResponse {
   absentDays: number;
 }
 
-export function clockIn(employeeId: string): Promise<AttendanceRecordResponse> {
+export function clockIn(
+  employeeId: string,
+  memo?: MemoRequest,
+): Promise<AttendanceRecordResponse> {
+  const body = memo ? { memo } : undefined;
   return apiClient.post<AttendanceRecordResponse>(
     `/api/attendance/clock-in?employeeId=${employeeId}`,
+    body,
   );
 }
 
-export function clockOut(employeeId: string): Promise<AttendanceRecordResponse> {
+export function clockOut(
+  employeeId: string,
+  memo?: MemoRequest,
+): Promise<AttendanceRecordResponse> {
+  const body = memo ? { memo } : undefined;
   return apiClient.post<AttendanceRecordResponse>(
     `/api/attendance/clock-out?employeeId=${employeeId}`,
+    body,
+  );
+}
+
+export function updateMemo(
+  recordId: string,
+  memoType: "CLOCK_IN" | "CLOCK_OUT",
+  employeeId: string,
+  request: MemoRequest,
+): Promise<MemoResponse> {
+  return apiClient.put<MemoResponse>(
+    `/api/attendance/${recordId}/memo/${memoType}?employeeId=${employeeId}`,
+    request,
+  );
+}
+
+export function deleteMemo(
+  recordId: string,
+  memoType: "CLOCK_IN" | "CLOCK_OUT",
+  employeeId: string,
+): Promise<void> {
+  return apiClient.delete<void>(
+    `/api/attendance/${recordId}/memo/${memoType}?employeeId=${employeeId}`,
   );
 }
 
