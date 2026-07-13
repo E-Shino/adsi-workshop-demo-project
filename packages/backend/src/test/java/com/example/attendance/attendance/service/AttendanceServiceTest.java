@@ -229,6 +229,70 @@ class AttendanceServiceTest {
     }
 
     @Nested
+    @DisplayName("メモ付き退勤打刻")
+    class ClockOutWithMemo {
+
+        @Test
+        @DisplayName("メモ付きで退勤打刻するとレスポンスにメモが含まれる")
+        void clockOut_withMemo_returnsRecordWithMemo() {
+            // Arrange
+            var openRecord = AttendanceRecord.builder()
+                    .id(UUID.randomUUID())
+                    .employee(employee)
+                    .workDate(TODAY_TOKYO)
+                    .clockIn(Instant.parse("2025-01-14T23:00:00Z"))
+                    .build();
+            var memoRequest = new MemoRequest(MemoCategory.DIRECT_RETURN, "客先から直帰");
+            when(attendanceRepository.findByEmployeeIdAndWorkDateAndClockOutIsNull(employee.getId(), TODAY_TOKYO))
+                    .thenReturn(Optional.of(openRecord));
+            when(attendanceRepository.save(any(AttendanceRecord.class)))
+                    .thenAnswer(invocation -> invocation.getArgument(0));
+            when(memoRepository.save(any(AttendanceMemo.class)))
+                    .thenAnswer(invocation -> invocation.getArgument(0));
+            when(memoRepository.findByAttendanceRecordId(any()))
+                    .thenAnswer(invocation -> List.of(
+                            AttendanceMemo.builder()
+                                    .id(UUID.randomUUID())
+                                    .attendanceRecord(openRecord)
+                                    .memoType(com.example.attendance.attendance.domain.MemoType.CLOCK_OUT)
+                                    .category(MemoCategory.DIRECT_RETURN)
+                                    .note("客先から直帰")
+                                    .build()
+                    ));
+
+            // Act
+            var result = service.clockOut(employee.getId(), memoRequest);
+
+            // Assert
+            assertThat(result.clockOutMemo()).isNotNull();
+            assertThat(result.clockOutMemo().category()).isEqualTo(MemoCategory.DIRECT_RETURN);
+            assertThat(result.clockOutMemo().note()).isEqualTo("客先から直帰");
+            verify(memoRepository).save(any(AttendanceMemo.class));
+        }
+
+        @Test
+        @DisplayName("退勤時に出勤用カテゴリを指定すると400エラー")
+        void clockOut_withInvalidCategory_throwsBadRequest() {
+            // Arrange
+            var openRecord = AttendanceRecord.builder()
+                    .id(UUID.randomUUID())
+                    .employee(employee)
+                    .workDate(TODAY_TOKYO)
+                    .clockIn(Instant.parse("2025-01-14T23:00:00Z"))
+                    .build();
+            var memoRequest = new MemoRequest(MemoCategory.DIRECT_GO, "");
+            when(attendanceRepository.findByEmployeeIdAndWorkDateAndClockOutIsNull(employee.getId(), TODAY_TOKYO))
+                    .thenReturn(Optional.of(openRecord));
+            when(attendanceRepository.save(any(AttendanceRecord.class)))
+                    .thenAnswer(invocation -> invocation.getArgument(0));
+
+            // Act & Assert
+            assertThatThrownBy(() -> service.clockOut(employee.getId(), memoRequest))
+                    .isInstanceOf(ResponseStatusException.class);
+        }
+    }
+
+    @Nested
     @DisplayName("メモ付き出勤打刻")
     class ClockInWithMemo {
 

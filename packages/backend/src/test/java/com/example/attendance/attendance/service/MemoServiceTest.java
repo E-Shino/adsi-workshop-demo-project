@@ -103,6 +103,27 @@ class MemoServiceTest {
         }
 
         @Test
+        @DisplayName("同一タイプのメモが既に存在する場合は409エラー")
+        void saveMemo_duplicateMemoType_throwsConflict() {
+            // Arrange
+            var request = new MemoRequest(MemoCategory.DIRECT_GO, "客先訪問");
+            var existingMemo = AttendanceMemo.builder()
+                    .id(UUID.randomUUID())
+                    .attendanceRecord(record)
+                    .memoType(MemoType.CLOCK_IN)
+                    .category(MemoCategory.REMOTE)
+                    .build();
+            when(attendanceRecordRepository.findById(record.getId())).thenReturn(Optional.of(record));
+            when(memoRepository.findByAttendanceRecordIdAndMemoType(record.getId(), MemoType.CLOCK_IN))
+                    .thenReturn(Optional.of(existingMemo));
+
+            // Act & Assert
+            assertThatThrownBy(() -> service.saveMemo(record.getId(), MemoType.CLOCK_IN, request, employee.getId()))
+                    .isInstanceOf(ResponseStatusException.class)
+                    .hasMessageContaining("409");
+        }
+
+        @Test
         @DisplayName("退勤カテゴリを出勤メモに指定すると400エラー")
         void saveMemo_clockIn_invalidCategory_throwsBadRequest() {
             // Arrange

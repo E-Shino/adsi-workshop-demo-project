@@ -1,6 +1,7 @@
 package com.example.attendance.attendance.service;
 
 import com.example.attendance.attendance.domain.AttendanceStatus;
+import com.example.attendance.attendance.domain.MemoCategory;
 import com.example.attendance.attendance.domain.MemoType;
 import com.example.attendance.attendance.domain.WorkDuration;
 import com.example.attendance.attendance.dto.AttendanceHistoryResponse;
@@ -85,6 +86,7 @@ public class AttendanceServiceImpl implements AttendanceService {
         log.info("Clock-in recorded for employee={} at={}", employeeId, now);
 
         if (memoRequest != null) {
+            validateMemoRequest(MemoType.CLOCK_IN, memoRequest);
             var memo = buildMemo(saved, MemoType.CLOCK_IN, memoRequest);
             memoRepository.save(memo);
             return AttendanceRecordResponse.from(saved, List.of(memo));
@@ -110,6 +112,7 @@ public class AttendanceServiceImpl implements AttendanceService {
         log.info("Clock-out recorded for employee={} at={}", employeeId, saved.getClockOut());
 
         if (memoRequest != null) {
+            validateMemoRequest(MemoType.CLOCK_OUT, memoRequest);
             var memo = buildMemo(saved, MemoType.CLOCK_OUT, memoRequest);
             memoRepository.save(memo);
             var allMemos = memoRepository.findByAttendanceRecordId(saved.getId());
@@ -262,6 +265,18 @@ public class AttendanceServiceImpl implements AttendanceService {
         return employeeRepository.findById(employeeId)
                 .orElseThrow(() -> new EntityNotFoundException(
                         "Employee with id '%s' was not found".formatted(employeeId)));
+    }
+
+    private void validateMemoRequest(MemoType memoType, MemoRequest request) {
+        if (!request.category().isValidFor(memoType)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Category '%s' is not valid for %s".formatted(request.category(), memoType));
+        }
+        if (request.category() == MemoCategory.OTHER &&
+                (request.note() == null || request.note().isBlank())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "Note is required when category is OTHER");
+        }
     }
 
     private AttendanceMemo buildMemo(AttendanceRecord record, MemoType memoType, MemoRequest request) {

@@ -42,7 +42,7 @@ public class AttendanceController {
     @ResponseStatus(HttpStatus.CREATED)
     public AttendanceRecordResponse clockIn(
             @RequestParam UUID employeeId,
-            @RequestBody(required = false) ClockInRequest request) {
+            @RequestBody(required = false) @Valid ClockInRequest request) {
         var memoRequest = request != null ? request.memo() : null;
         return attendanceService.clockIn(employeeId, memoRequest);
     }
@@ -50,7 +50,7 @@ public class AttendanceController {
     @PostMapping("/clock-out")
     public AttendanceRecordResponse clockOut(
             @RequestParam UUID employeeId,
-            @RequestBody(required = false) ClockOutRequest request) {
+            @RequestBody(required = false) @Valid ClockOutRequest request) {
         var memoRequest = request != null ? request.memo() : null;
         return attendanceService.clockOut(employeeId, memoRequest);
     }
